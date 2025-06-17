@@ -1,0 +1,105 @@
+version: '3.8'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    networks:
+      - backend
+
+  postgres-orders:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ordersdb
+      POSTGRES_USER: ordersuser
+      POSTGRES_PASSWORD: orderspass
+    ports:
+      - '5433:5432'
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ordersuser -d ordersdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-payments:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: paymentsdb
+      POSTGRES_USER: paymentsuser
+      POSTGRES_PASSWORD: paymentspass
+    ports:
+      - '5434:5432'
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paymentsuser -d paymentsdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build: ./src/api-gateway
+    depends_on:
+      - order-service
+      - payments-service
+    environment:
+      ASPNETCORE_URLS: http://+:80
+    ports:
+      - '8080:80'
+    networks:
+      - backend
+
+  order-service:
+    build: ./src/order-service
+    depends_on:
+      postgres-orders:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    environment:
+      ASPNETCORE_URLS: http://+:80
+      ConnectionStrings__DefaultConnection: Host=postgres-orders;Database=ordersdb;Username=ordersuser;Password=orderspass
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: user
+      RabbitMQ__Password: password
+    ports:
+      - '5001:80'
+    networks:
+      - backend
+
+  payments-service:
+    build: ./src/payments-service
+    depends_on:
+      postgres-payments:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    environment:
+      ASPNETCORE_URLS: http://+:80
+      ConnectionStrings__DefaultConnection: Host=postgres-payments;Database=paymentsdb;Username=paymentsuser;Password=paymentspass
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: user
+      RabbitMQ__Password: password
+    ports:
+      - '5002:80'
+    networks:
+      - backend
+
+  frontend:
+    build: ./src/frontend
+    depends_on:
+      - api-gateway
+    ports:
+      - '3000:80'
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge 
