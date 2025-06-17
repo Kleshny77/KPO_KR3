@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace order_service.Migrations
+namespace payments_service.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -12,6 +12,20 @@ namespace order_service.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "Accounts",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Balance = table.Column<long>(type: "bigint", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Accounts", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "InboxMessages",
                 columns: table => new
@@ -24,21 +38,6 @@ namespace order_service.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_InboxMessages", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Orders",
-                columns: table => new
-                {
-                    Id = table.Column<string>(type: "text", nullable: false),
-                    UserId = table.Column<string>(type: "text", nullable: false),
-                    Amount = table.Column<decimal>(type: "numeric", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: false),
-                    Status = table.Column<string>(type: "text", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Orders", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -57,19 +56,38 @@ namespace order_service.Migrations
                 {
                     table.PrimaryKey("PK_OutboxMessages", x => x.Id);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "Transactions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    AccountId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Amount = table.Column<long>(type: "bigint", nullable: false),
+                    Type = table.Column<string>(type: "text", nullable: false),
+                    ReferenceOrderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Transactions", x => x.Id);
+                });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "Accounts");
+
+            migrationBuilder.DropTable(
                 name: "InboxMessages");
 
             migrationBuilder.DropTable(
-                name: "Orders");
+                name: "OutboxMessages");
 
             migrationBuilder.DropTable(
-                name: "OutboxMessages");
+                name: "Transactions");
         }
     }
 }

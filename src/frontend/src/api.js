@@ -10,14 +10,13 @@ export async function createOrder(userId, amount, description) {
 }
 
 export async function topUp(userId, amount) {
-  const res = await fetch(`${API_URL}/payments/create`, {
+  const res = await fetch(`${API_URL}/payments/api/Accounts/create`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(userId)
+    body: JSON.stringify({ userId })
   });
   if (res.ok) {
-    // Счет создан, теперь пополняем
-    const res2 = await fetch(`${API_URL}/payments/topup`, {
+    const res2 = await fetch(`${API_URL}/payments/api/Accounts/topup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, amount })
@@ -25,7 +24,7 @@ export async function topUp(userId, amount) {
     return res2.json();
   } else {
     // Счет уже есть, просто пополняем
-    const res2 = await fetch(`${API_URL}/payments/topup`, {
+    const res2 = await fetch(`${API_URL}/payments/api/Accounts/topup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, amount })
@@ -35,12 +34,12 @@ export async function topUp(userId, amount) {
 }
 
 export async function getBalance(userId) {
-  const res = await fetch(`${API_URL}/payments/balance/${userId}`);
+  const res = await fetch(`${API_URL}/payments/api/Accounts/balance/${userId}`);
   return res.json();
 }
 
 export async function getOrders(userId) {
-  const res = await fetch(`${API_URL}/orders?userId=${userId}`);
+  const res = await fetch(`${API_URL}/orders/api/Orders?userId=${userId}`);
   return res.json();
 }
 

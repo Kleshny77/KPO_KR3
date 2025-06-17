@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using order_service.Data;
 using order_service.Models;
-using order_service.Services;
-using order_service.Contracts;
-using MassTransit;
+using Shared.Contracts;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace order_service.Controllers
 {
@@ -13,12 +13,12 @@ namespace order_service.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly OrdersDbContext _db;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(OrdersDbContext db, IPublishEndpoint publishEndpoint)
+        public OrdersController(OrdersDbContext db, ILogger<OrdersController> logger)
         {
             _db = db;
-            _publishEndpoint = publishEndpoint;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -26,7 +26,7 @@ namespace order_service.Controllers
         {
             var order = new Order
             {
-                UserId = request.CustomerId,
+                UserId = Guid.Parse(request.CustomerId),
                 Amount = request.Amount,
                 Description = request.Description,
                 Status = "NEW"
@@ -35,13 +35,24 @@ namespace order_service.Controllers
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
 
-            // Отправляем событие для обработки платежа
-            await _publishEndpoint.Publish(new OrderPaymentRequested
+            var outboxMessage = new OutboxMessage
             {
-                OrderId = order.Id,
-                UserId = order.UserId,
-                Amount = order.Amount
-            });
+                Type = nameof(OrderPaymentRequested),
+                Payload = JsonSerializer.Serialize(new OrderPaymentRequested
+                {
+                    OrderId = order.Id,
+                    UserId = order.UserId,
+                    Amount = order.Amount,
+                    Description = order.Description
+                }),
+                Sent = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.OutboxMessages.Add(outboxMessage);
+            _logger.LogInformation("[DEBUG] OutboxMessage added: Sent = false");
+
+            await _db.SaveChangesAsync();
+            _logger.LogInformation($"[DEBUG] OutboxMessage saved. Count: {_db.OutboxMessages.Count()} | Last Sent: {_db.OutboxMessages.OrderByDescending(x => x.Id).First().Sent}");
 
             return Ok(order);
         }
@@ -53,7 +64,7 @@ namespace order_service.Controllers
             
             if (!string.IsNullOrEmpty(customerId))
             {
-                query = query.Where(o => o.UserId == customerId);
+                query = query.Where(o => o.UserId == Guid.Parse(customerId));
             }
 
             var orders = await query.OrderByDescending(o => o.Id).ToListAsync();
@@ -63,7 +74,10 @@ namespace order_service.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetOrder(string id)
         {
-            var order = await _db.Orders.FindAsync(id);
+            if (!Guid.TryParse(id, out var orderId))
+                return BadRequest("Invalid order ID format");
+                
+            var order = await _db.Orders.FindAsync(orderId);
             if (order == null)
                 return NotFound();
 
@@ -74,7 +88,7 @@ namespace order_service.Controllers
     public class CreateOrderRequest
     {
         public string CustomerId { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
+        public long Amount { get; set; }
         public string Description { get; set; } = string.Empty;
     }
 } 

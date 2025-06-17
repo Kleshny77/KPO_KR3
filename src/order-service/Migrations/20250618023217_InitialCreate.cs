@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace payments_service.Migrations
+namespace order_service.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -12,20 +12,6 @@ namespace payments_service.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "Accounts",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    UserId = table.Column<string>(type: "text", nullable: false),
-                    Balance = table.Column<decimal>(type: "numeric", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Accounts", x => x.Id);
-                });
-
             migrationBuilder.CreateTable(
                 name: "InboxMessages",
                 columns: table => new
@@ -38,6 +24,22 @@ namespace payments_service.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_InboxMessages", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Orders",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Amount = table.Column<long>(type: "bigint", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Orders", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -62,10 +64,10 @@ namespace payments_service.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Accounts");
+                name: "InboxMessages");
 
             migrationBuilder.DropTable(
-                name: "InboxMessages");
+                name: "Orders");
 
             migrationBuilder.DropTable(
                 name: "OutboxMessages");

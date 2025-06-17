@@ -1,13 +1,30 @@
 version: '3.8'
 services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - '5672:5672'
-      - '15672:15672'
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
     environment:
-      RABBITMQ_DEFAULT_USER: user
-      RABBITMQ_DEFAULT_PASS: password
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - '2181:2181'
+    networks:
+      - backend
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - '9092:9092'
+      - '29092:29092'
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
     networks:
       - backend
 
@@ -56,38 +73,38 @@ services:
       - backend
 
   order-service:
-    build: ./src/order-service
+    build:
+      context: .
+      dockerfile: src/order-service/Dockerfile
     depends_on:
       postgres-orders:
         condition: service_healthy
-      rabbitmq:
+      kafka:
         condition: service_started
     environment:
       ASPNETCORE_URLS: http://+:80
-      ConnectionStrings__DefaultConnection: Host=postgres-orders;Database=ordersdb;Username=ordersuser;Password=orderspass
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: user
-      RabbitMQ__Password: password
+      ConnectionStrings__OrdersDb: Host=postgres-orders;Database=ordersdb;Username=ordersuser;Password=orderspass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
-      - '5001:80'
+      - '5101:80'
     networks:
       - backend
 
   payments-service:
-    build: ./src/payments-service
+    build:
+      context: .
+      dockerfile: src/payments-service/Dockerfile
     depends_on:
       postgres-payments:
         condition: service_healthy
-      rabbitmq:
+      kafka:
         condition: service_started
     environment:
       ASPNETCORE_URLS: http://+:80
-      ConnectionStrings__DefaultConnection: Host=postgres-payments;Database=paymentsdb;Username=paymentsuser;Password=paymentspass
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: user
-      RabbitMQ__Password: password
+      ConnectionStrings__PaymentsDb: Host=postgres-payments;Database=paymentsdb;Username=paymentsuser;Password=paymentspass
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
-      - '5002:80'
+      - '5102:80'
     networks:
       - backend
 
@@ -96,7 +113,7 @@ services:
     depends_on:
       - api-gateway
     ports:
-      - '3000:80'
+      - '8081:80'
     networks:
       - backend
 

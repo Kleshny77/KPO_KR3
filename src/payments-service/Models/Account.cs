@@ -2,8 +2,9 @@ namespace payments_service.Models
 {
     public class Account
     {
-        public int Id { get; set; }
-        public string UserId { get; set; } = string.Empty;
-        public decimal Balance { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid UserId { get; set; }
+        public long Balance { get; set; }
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 } 

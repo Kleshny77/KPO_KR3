@@ -1,6 +1,6 @@
 import { HubConnectionBuilder } from '@microsoft/signalr';
 
-const SIGNALR_URL = 'http://localhost:5001/orderStatusHub';
+const SIGNALR_URL = 'http://localhost:8080/order-status';
 
 export function connectOrderStatus(userId, onStatusChanged) {
   const connection = new HubConnectionBuilder()

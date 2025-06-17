@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using payments_service.Data;
 using payments_service.Models;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace payments_service.Controllers
 {
@@ -10,17 +12,29 @@ namespace payments_service.Controllers
     public class AccountsController : ControllerBase
     {
         private readonly PaymentsDbContext _db;
-        public AccountsController(PaymentsDbContext db)
+        private readonly ILogger<AccountsController> _logger;
+        
+        public AccountsController(PaymentsDbContext db, ILogger<AccountsController> logger)
         {
             _db = db;
+            _logger = logger;
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> CreateAccount([FromBody] string userId)
+        public async Task<IActionResult> CreateAccount([FromBody] CreateAccountRequest req)
         {
-            if (await _db.Accounts.AnyAsync(a => a.UserId == userId))
+            if (req == null)
+                return BadRequest("Request is null");
+            if (string.IsNullOrEmpty(req.UserId))
+                return BadRequest("UserId is required");
+            if (!Guid.TryParse(req.UserId, out var guidUserId))
+                return BadRequest("Invalid userId format");
+            if (await _db.Accounts.AnyAsync(a => a.UserId == guidUserId))
+            {
+                _logger.LogWarning("Account already exists for userId: {UserId}", guidUserId);
                 return BadRequest("Account already exists");
-            var acc = new Account { UserId = userId, Balance = 0 };
+            }
+            var acc = new Account { UserId = guidUserId, Balance = 0 };
             _db.Accounts.Add(acc);
             await _db.SaveChangesAsync();
             return Ok(acc);
@@ -29,7 +43,9 @@ namespace payments_service.Controllers
         [HttpPost("topup")]
         public async Task<IActionResult> TopUp([FromBody] TopUpRequest req)
         {
-            var acc = await _db.Accounts.FirstOrDefaultAsync(a => a.UserId == req.UserId);
+            if (!Guid.TryParse(req.UserId, out var guidUserId))
+                return BadRequest("Invalid userId format");
+            var acc = await _db.Accounts.FirstOrDefaultAsync(a => a.UserId == guidUserId);
             if (acc == null) return NotFound("Account not found");
             acc.Balance += req.Amount;
             await _db.SaveChangesAsync();
@@ -39,7 +55,9 @@ namespace payments_service.Controllers
         [HttpGet("balance/{userId}")]
         public async Task<IActionResult> GetBalance(string userId)
         {
-            var acc = await _db.Accounts.FirstOrDefaultAsync(a => a.UserId == userId);
+            if (!Guid.TryParse(userId, out var guidUserId))
+                return BadRequest("Invalid userId format");
+            var acc = await _db.Accounts.FirstOrDefaultAsync(a => a.UserId == guidUserId);
             if (acc == null) return NotFound("Account not found");
             return Ok(new { acc.UserId, acc.Balance });
         }
@@ -47,7 +65,14 @@ namespace payments_service.Controllers
 
     public class TopUpRequest
     {
+        [JsonPropertyName("userId")]
         public string UserId { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
+        public long Amount { get; set; }
+    }
+
+    public class CreateAccountRequest
+    {
+        [JsonPropertyName("userId")]
+        public string UserId { get; set; } = string.Empty;
     }
 } 

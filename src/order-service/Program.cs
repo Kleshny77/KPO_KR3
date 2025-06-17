@@ -1,88 +1,63 @@
 using Microsoft.EntityFrameworkCore;
 using order_service.Data;
-using MassTransit;
 using order_service.Services;
-using order_service.Contracts;
+using order_service.Hubs;
+using Shared.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddControllers();
-
-// PostgreSQL
-builder.Services.AddDbContext<OrdersDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// MassTransit + RabbitMQ
-builder.Services.AddMassTransit(x =>
+builder.WebHost.ConfigureKestrel(options =>
 {
-    x.AddConsumer<OrderPaymentResultConsumer>();
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
-        {
-            h.Username(builder.Configuration["RabbitMQ:Username"]);
-            h.Password(builder.Configuration["RabbitMQ:Password"]);
-        });
-        cfg.ReceiveEndpoint("order-payment-results", e =>
-        {
-            e.ConfigureConsumer<OrderPaymentResultConsumer>(context);
-        });
-    });
+    options.ListenAnyIP(80);
 });
 
-builder.Services.AddHostedService<OutboxPublisherHostedService>();
+builder.Services.AddControllers();
 
-// Swagger
+builder.Services.AddDbContext<OrdersDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("OrdersDb")));
+
+builder.Services.AddScoped<OrderStatusNotifier>();
+// builder.Services.AddHostedService<OutboxProcessor>();
+// builder.Services.AddHostedService<OrderPaymentResultConsumer>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<OrderStatusNotifier>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:8081")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+builder.Host.ConfigureHostOptions(o => o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
 
 var app = builder.Build();
 
-// Apply database migrations
+Console.WriteLine("Before migration");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
     db.Database.Migrate();
 }
+Console.WriteLine("After migration");
 
-// Configure the HTTP request pipeline.
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UsePathBase("/orders");
+app.UseRouting();
+app.UseCors();
 app.UseAuthorization();
-
 app.MapControllers();
+app.MapHub<OrderStatusHub>("/order-status");
+app.MapGet("/ping", () => "pong");
 
-app.MapHub<order_service.Hubs.OrderStatusHub>("/orderStatusHub");
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
-
+Console.WriteLine("App is starting...");
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

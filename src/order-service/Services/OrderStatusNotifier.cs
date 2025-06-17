@@ -11,9 +11,9 @@ namespace order_service.Services
             _hubContext = hubContext;
         }
 
-        public async Task NotifyStatusChanged(string userId, string orderId, string status)
+        public async Task NotifyStatusChanged(Guid userId, Guid orderId, string status)
         {
-            await _hubContext.Clients.Group(userId).SendAsync("OrderStatusChanged", new { orderId, status });
+            await _hubContext.Clients.Group(userId.ToString()).SendAsync("OrderStatusChanged", new { orderId, status });
         }
     }
 } 

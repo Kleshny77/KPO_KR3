@@ -1,58 +1,57 @@
 using Microsoft.EntityFrameworkCore;
 using payments_service.Data;
-using MassTransit;
 using payments_service.Services;
-using payments_service.Contracts;
+using Shared.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddControllers();
-
-// PostgreSQL
-builder.Services.AddDbContext<PaymentsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// MassTransit + RabbitMQ
-builder.Services.AddMassTransit(x =>
+builder.WebHost.ConfigureKestrel(options =>
 {
-    x.AddConsumer<OrderPaymentConsumer>();
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
-        {
-            h.Username(builder.Configuration["RabbitMQ:Username"]);
-            h.Password(builder.Configuration["RabbitMQ:Password"]);
-        });
-        cfg.ReceiveEndpoint("order-payment-requests", e =>
-        {
-            e.ConfigureConsumer<OrderPaymentConsumer>(context);
-        });
-    });
+    options.ListenAnyIP(80);
 });
 
-builder.Services.AddHostedService<OutboxPublisherHostedService>();
+builder.Services.AddControllers();
 
-// Swagger
+builder.Services.AddDbContext<PaymentsDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PaymentsDb")));
+
+// builder.Services.AddHostedService<OutboxProcessor>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// builder.Services.AddHostedService<OrderPaymentConsumer>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:8081")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+builder.Host.ConfigureHostOptions(o => o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
+
 var app = builder.Build();
 
-// Apply database migrations
+Console.WriteLine("Before migration");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<PaymentsDbContext>();
     db.Database.Migrate();
 }
+Console.WriteLine("After migration");
 
-// Configure the HTTP request pipeline.
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UsePathBase("/payments");
+app.UseRouting();
+app.UseCors();
 app.UseAuthorization();
-
 app.MapControllers();
 
 var summaries = new[]
@@ -75,6 +74,9 @@ app.MapGet("/weatherforecast", () =>
 .WithName("GetWeatherForecast")
 .WithOpenApi();
 
+app.MapGet("/ping", () => "pong");
+
+Console.WriteLine("App is starting...");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

@@ -1,0 +1,302 @@
+{
+	"info": {
+		"_postman_id": "kpo-kr3-api-collection",
+		"name": "KPO_KR3 API Collection",
+		"description": "Полная коллекция API для микросервисной системы онлайн-магазина",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Payments Service",
+			"item": [
+				{
+					"name": "Create Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\"customer123\""
+						},
+						"url": {
+							"raw": "http://localhost:5002/api/accounts/create",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5002",
+							"path": [
+								"api",
+								"accounts",
+								"create"
+							]
+						}
+					}
+				},
+				{
+					"name": "Top Up Balance",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"customer123\",\n  \"amount\": 1000\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5002/api/accounts/topup",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5002",
+							"path": [
+								"api",
+								"accounts",
+								"topup"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5002/api/accounts/balance/customer123",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5002",
+							"path": [
+								"api",
+								"accounts",
+								"balance",
+								"customer123"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Order Service",
+			"item": [
+				{
+					"name": "Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerId\": \"customer123\",\n  \"amount\": 500,\n  \"description\": \"Test order\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5001/api/orders",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"api",
+								"orders"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5001/api/orders?customerId=customer123",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"api",
+								"orders"
+							],
+							"query": [
+								{
+									"key": "customerId",
+									"value": "customer123"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Order by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5001/api/orders/{{orderId}}",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"api",
+								"orders",
+								"{{orderId}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "API Gateway",
+			"item": [
+				{
+					"name": "Orders via Gateway",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"customerId\": \"customer123\",\n  \"amount\": 500,\n  \"description\": \"Test order via gateway\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/orders/api/orders",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"orders",
+								"api",
+								"orders"
+							]
+						}
+					}
+				},
+				{
+					"name": "Payments via Gateway",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\"customer123\""
+						},
+						"url": {
+							"raw": "http://localhost:8080/payments/api/accounts/create",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"payments",
+								"api",
+								"accounts",
+								"create"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Health Checks",
+			"item": [
+				{
+					"name": "API Gateway Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"health"
+							]
+						}
+					}
+				},
+				{
+					"name": "Order Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5001/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"health"
+							]
+						}
+					}
+				},
+				{
+					"name": "Payments Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5002/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5002",
+							"path": [
+								"health"
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "orderId",
+			"value": "6b7e344c-536e-415d-a10c-822107a25931",
+			"type": "string"
+		}
+	]
+} 

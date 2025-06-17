@@ -12,7 +12,7 @@ using payments_service.Data;
 namespace payments_service.Migrations
 {
     [DbContext(typeof(PaymentsDbContext))]
-    [Migration("20250617191729_InitialCreate")]
+    [Migration("20250618023221_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -27,18 +27,18 @@ namespace payments_service.Migrations
 
             modelBuilder.Entity("payments_service.Models.Account", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<long>("Balance")
+                        .HasColumnType("bigint");
 
-                    b.Property<decimal>("Balance")
-                        .HasColumnType("numeric");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -94,6 +94,33 @@ namespace payments_service.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("OutboxMessages");
+                });
+
+            modelBuilder.Entity("payments_service.Models.Transaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReferenceOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Transactions");
                 });
 #pragma warning restore 612, 618
         }
